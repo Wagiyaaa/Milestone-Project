@@ -5,9 +5,13 @@ const crypto = require("crypto");
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png"]);
 
 async function detectFileType(buffer) {
-    // file-type is ESM-only; use dynamic import
     const { fileTypeFromBuffer } = await import("file-type");
     return fileTypeFromBuffer(buffer);
+}
+
+function getProfilesDir() {
+    const baseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), "uploads");
+    return path.join(baseDir, "profiles");
 }
 
 async function saveProfilePhoto(file) {
@@ -24,30 +28,27 @@ async function saveProfilePhoto(file) {
         throw err;
     }
 
-    const uploadsDir = path.join(process.cwd(), "uploads", "profiles");
-    await fs.mkdir(uploadsDir, { recursive: true });
+    const profilesDir = getProfilesDir();
+    await fs.mkdir(profilesDir, { recursive: true });
 
-    const filename = `${crypto.randomUUID()}.${detected.ext}`; // jpg or png
-    const absPath = path.join(uploadsDir, filename);
+    const filename = `${crypto.randomUUID()}.${detected.ext}`;
+    const absPath = path.join(profilesDir, filename);
 
     await fs.writeFile(absPath, file.buffer, { flag: "wx" });
 
     return `/uploads/profiles/${filename}`;
 }
 
-// cleanup if DB insert fails after saving file
 async function deleteProfilePhotoByPath(profilePhotoPath) {
     try {
         if (!profilePhotoPath) return;
-
-        // profilePhotoPath: /uploads/profiles/<file>
         const filename = profilePhotoPath.split("/").pop();
         if (!filename) return;
 
-        const absPath = path.join(process.cwd(), "uploads", "profiles", filename);
+        const absPath = path.join(getProfilesDir(), filename);
         await fs.unlink(absPath);
     } catch {
-        // best-effort cleanup; don't crash the request because cleanup failed
+        // best-effort cleanup
     }
 }
 

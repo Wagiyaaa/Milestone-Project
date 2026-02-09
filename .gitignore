@@ -1,0 +1,38 @@
+# env
+.env
+.env.*
+
+# local test artifacts
+cookies.txt
+login.json
+wrong_login.json
+admin.json
+
+# node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# builds
+client/dist/
+server/dist/
+
+# uploads (never commit user uploads)
+uploads/
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+uploads/
+client/dist/
+server/node_modules/
+client/node_modules/
+.env
+cookies.txt
+login.json
+wrong_login.json
+admin.json
