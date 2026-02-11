@@ -2,6 +2,9 @@
 .env
 .env.*
 
+client/.env
+server/.env
+
 # local test artifacts
 cookies.txt
 login.json
