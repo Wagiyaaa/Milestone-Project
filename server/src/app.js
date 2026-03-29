@@ -5,19 +5,31 @@ const path = require("path");
 const multer = require("multer");
 const crypto = require("crypto");
 
+const app = express();
+
+const cors = require("cors");
+
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
+
 const pool = require("./db");
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
+const sessionTimeout = require("./middleware/sessionTimeout");
 
 const PgSession = require("connect-pg-simple")(session);
 
-const app = express();
+const IS_PRODUCTION = process.env.NODE_ENV === "production";
 
-if (process.env.NODE_ENV === "production") {
+if (IS_PRODUCTION) {
   app.set("trust proxy", 1);
 }
 
-app.use(helmet());
+app.use(helmet({
+  contentSecurityPolicy: false,
+}));
 
 // request id
 app.use((req, res, next) => {
@@ -51,11 +63,14 @@ app.use(
     cookie: {
       httpOnly: true,
       sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
-      maxAge: 1000 * 60 * 60 * 8,
+      secure: IS_PRODUCTION,
+      maxAge: (Number(process.env.SESSION_ABSOLUTE_HOURS) || 8) * 60 * 60 * 1000,
     },
   })
 );
+
+// session timeout enforcement
+app.use(sessionTimeout);
 
 // uploads (default: server/uploads, or persistent disk via UPLOAD_DIR)
 const uploadsBase = process.env.UPLOAD_DIR || path.resolve(__dirname, "..", "uploads");
@@ -67,7 +82,7 @@ app.use("/auth", authRoutes);
 app.use("/admin", adminRoutes);
 
 // serve React build in production
-if (process.env.NODE_ENV === "production") {
+if (IS_PRODUCTION) {
   const rootDir = path.resolve(__dirname, "..", ".."); // repo root
   const distPath = path.join(rootDir, "client", "dist");
 
@@ -75,8 +90,10 @@ if (process.env.NODE_ENV === "production") {
   app.get("*", (req, res) => res.sendFile(path.join(distPath, "index.html")));
 }
 
-// multer errors (file too large etc.)
 app.use((err, req, res, next) => {
+  const isDebug = !IS_PRODUCTION;
+ 
+  // Multer file-size / upload errors
   if (err instanceof multer.MulterError) {
     if (err.code === "LIMIT_FILE_SIZE") {
       const maxMb = Number(process.env.UPLOAD_MAX_MB || 5);
@@ -92,9 +109,17 @@ app.use((err, req, res, next) => {
       request_id: req.id,
     });
   }
-
+ 
+  // All other unhandled errors
   console.error(`[${req.id}] unhandled error`, err?.message || err);
-  return res.status(500).json({ message: "Something went wrong.", request_id: req.id });
+  if (isDebug) console.error(err?.stack);
+ 
+  const body = { message: "Something went wrong.", request_id: req.id };
+  if (isDebug) {
+    body.debug = { error: err?.message, stack: err?.stack };
+  }
+ 
+  return res.status(500).json(body);
 });
-
+ 
 module.exports = app;

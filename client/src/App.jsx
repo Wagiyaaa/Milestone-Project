@@ -103,6 +103,23 @@ export default function App() {
     loadMe();
   }, []);
 
+  useEffect(() => {
+  let expired = false;
+
+  const interval = setInterval(async () => {
+      if (expired) return;
+      const { status, data } = await fetchJson("/auth/me");
+      if (status === 401 && data.code === "SESSION_EXPIRED") {
+        expired = true;
+        clearInterval(interval);
+        alert("Your session has expired. Please log in again.");
+        window.location.href = "/login";
+      }
+    }, 30 * 1000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   return (
     <div className="container">
       <header className="nav">
