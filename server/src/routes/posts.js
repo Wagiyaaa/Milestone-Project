@@ -8,6 +8,7 @@ const { errorResponse } = require("../utils/errorResponse");
 const { saveImage, deleteImageByPath } = require("../utils/imageStorage");
 const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
 const { listPosts, getPostVisibility } = require("../services/postService");
+const { getPostNumericMutationParts } = require("../utils/postSchemaCompat");
 
 const router = express.Router();
 
@@ -25,11 +26,11 @@ const createPostSchema = z.object({
     .int("Estimated read time must be a whole number.")
     .min(1, "Estimated read time must be at least 1 minute.")
     .max(120, "Estimated read time must not exceed 120 minutes."),
-  topic_rating: z.coerce
+  reference_count: z.coerce
     .number()
-    .int("Topic rating must be a whole number.")
-    .min(1, "Topic rating must be at least 1.")
-    .max(10, "Topic rating must not exceed 10."),
+    .int("Reference count must be a whole number.")
+    .min(0, "Reference count cannot be negative.")
+    .max(50, "Reference count must not exceed 50."),
 });
 
 const commentSchema = z.object({
@@ -83,11 +84,12 @@ router.post("/", requireAuth, upload.single("image"), async (req, res) => {
       imagePath = await saveImage(req.file, "posts");
     }
 
+    const numericMutation = await getPostNumericMutationParts();
     const result = await pool.query(
       `
-        INSERT INTO posts (author_id, title, body, image_path, read_time_minutes, topic_rating)
+        INSERT INTO posts (author_id, title, body, image_path, read_time_minutes, ${numericMutation.column})
         VALUES ($1::uuid, $2, $3, $4, $5, $6)
-        RETURNING id, title, body, image_path, read_time_minutes, topic_rating, created_at
+        RETURNING id, title, body, image_path, read_time_minutes, ${numericMutation.returning}, created_at
       `,
       [
         req.session.user.userId,
@@ -95,7 +97,7 @@ router.post("/", requireAuth, upload.single("image"), async (req, res) => {
         parsed.data.body,
         imagePath,
         parsed.data.read_time_minutes,
-        parsed.data.topic_rating,
+        parsed.data.reference_count,
       ]
     );
 
@@ -111,7 +113,7 @@ router.post("/", requireAuth, upload.single("image"), async (req, res) => {
       details: {
         has_image: Boolean(post.image_path),
         read_time_minutes: post.read_time_minutes,
-        topic_rating: post.topic_rating,
+        reference_count: post.reference_count,
       },
       request: buildRequestContext(req),
     });

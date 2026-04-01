@@ -34,6 +34,15 @@ const registerSchema = z.object({
     .trim()
     .regex(/^\+[1-9]\d{1,14}$/, "Use E.164 format (e.g., +639171234567)."),
   password: z.string().min(12, "Password must be at least 12 characters."),
+  confirm_password: z.string().min(1, "Please confirm your password."),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.confirm_password) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["confirm_password"],
+      message: "Passwords do not match.",
+    });
+  }
 });
 
 const loginSchema = z.object({

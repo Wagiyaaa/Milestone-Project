@@ -1,6 +1,8 @@
 const pool = require("../db");
+const { getPostNumericSelect } = require("../utils/postSchemaCompat");
 
 async function fetchPosts({ viewerId = null, includeHidden = false, whereSql = "TRUE", params = [] } = {}) {
+  const numericSelect = await getPostNumericSelect("p");
   const values = [viewerId, includeHidden, ...params];
   const postsResult = await pool.query(
     `
@@ -11,7 +13,7 @@ async function fetchPosts({ viewerId = null, includeHidden = false, whereSql = "
         p.body,
         p.image_path,
         p.read_time_minutes,
-        p.topic_rating,
+        ${numericSelect},
         p.is_hidden,
         p.hidden_reason,
         p.hidden_at,

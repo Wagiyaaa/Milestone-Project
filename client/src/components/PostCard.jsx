@@ -29,7 +29,7 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
     title: post.title,
     body: post.body,
     read_time_minutes: String(post.read_time_minutes),
-    topic_rating: String(post.topic_rating),
+    reference_count: String(post.reference_count),
   });
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
       title: post.title,
       body: post.body,
       read_time_minutes: String(post.read_time_minutes),
-      topic_rating: String(post.topic_rating),
+      reference_count: String(post.reference_count),
     });
     setModerationReason(post.hidden_reason || "");
     setEditing(false);
@@ -161,7 +161,7 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
 
         <div className="pill-row">
           <span className="pill">Read time: {post.read_time_minutes} min</span>
-          <span className="pill">Topic rating: {post.topic_rating}/10</span>
+          <span className="pill">References: {post.reference_count}</span>
           <span className="pill">{post.like_count} likes</span>
           <span className="pill">{post.comment_count} comments</span>
           {post.is_hidden && <span className="pill danger">Hidden</span>}
@@ -202,13 +202,15 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
             </label>
 
             <label>
-              Topic rating
+              Reference count
               <input
                 type="number"
-                min="1"
-                max="10"
-                value={editForm.topic_rating}
-                onChange={(event) => setEditForm((current) => ({ ...current, topic_rating: event.target.value }))}
+                min="0"
+                max="50"
+                value={editForm.reference_count}
+                onChange={(event) =>
+                  setEditForm((current) => ({ ...current, reference_count: event.target.value }))
+                }
               />
             </label>
           </div>

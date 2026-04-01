@@ -61,7 +61,7 @@ CREATE TABLE IF NOT EXISTS public.posts (
   body text NOT NULL,
   image_path text,
   read_time_minutes integer NOT NULL CHECK (read_time_minutes BETWEEN 1 AND 120),
-  topic_rating integer NOT NULL CHECK (topic_rating BETWEEN 1 AND 10),
+  reference_count integer NOT NULL CHECK (reference_count BETWEEN 0 AND 50),
   is_hidden boolean NOT NULL DEFAULT false,
   hidden_reason text,
   hidden_at timestamptz,

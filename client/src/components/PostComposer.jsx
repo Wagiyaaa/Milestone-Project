@@ -6,7 +6,7 @@ const initialForm = {
   title: "",
   body: "",
   read_time_minutes: "5",
-  topic_rating: "5",
+  reference_count: "0",
 };
 
 export default function PostComposer({ onCreated }) {
@@ -30,7 +30,7 @@ export default function PostComposer({ onCreated }) {
     formData.append("title", form.title);
     formData.append("body", form.body);
     formData.append("read_time_minutes", form.read_time_minutes);
-    formData.append("topic_rating", form.topic_rating);
+    formData.append("reference_count", form.reference_count);
     if (image) formData.append("image", image);
 
     const response = await fetchForm("/posts", formData);
@@ -86,15 +86,15 @@ export default function PostComposer({ onCreated }) {
           </label>
 
           <label>
-            Topic rating (1-10)
+            Reference count
             <input
               type="number"
-              min="1"
-              max="10"
-              value={form.topic_rating}
-              onChange={(event) => updateField("topic_rating", event.target.value)}
+              min="0"
+              max="50"
+              value={form.reference_count}
+              onChange={(event) => updateField("reference_count", event.target.value)}
             />
-            {errors.topic_rating && <div className="error">{errors.topic_rating}</div>}
+            {errors.reference_count && <div className="error">{errors.reference_count}</div>}
           </label>
         </div>
 

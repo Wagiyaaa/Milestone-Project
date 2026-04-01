@@ -6,6 +6,7 @@ const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
 const { listPosts, listPostsByAuthor, listEngagedPosts, getPostVisibility } = require("../services/postService");
 const { z } = require("zod");
 const { deleteImageByPath } = require("../utils/imageStorage");
+const { getPostNumericMutationParts } = require("../utils/postSchemaCompat");
 
 const router = express.Router();
 
@@ -17,11 +18,11 @@ const editPostSchema = z.object({
     .int("Estimated read time must be a whole number.")
     .min(1, "Estimated read time must be at least 1 minute.")
     .max(120, "Estimated read time must not exceed 120 minutes."),
-  topic_rating: z.coerce
+  reference_count: z.coerce
     .number()
-    .int("Topic rating must be a whole number.")
-    .min(1, "Topic rating must be at least 1.")
-    .max(10, "Topic rating must not exceed 10."),
+    .int("Reference count must be a whole number.")
+    .min(0, "Reference count cannot be negative.")
+    .max(50, "Reference count must not exceed 50."),
 });
 
 const moderationSchema = z.object({
@@ -189,23 +190,24 @@ router.patch("/posts/:postId", requireAdmin, async (req, res) => {
       });
     }
 
+    const numericMutation = await getPostNumericMutationParts();
     const result = await pool.query(
       `
         UPDATE posts
         SET title = $2,
             body = $3,
             read_time_minutes = $4,
-            topic_rating = $5,
+            ${numericMutation.column} = $5,
             updated_at = NOW()
         WHERE id = $1::uuid
-        RETURNING id, title, body, read_time_minutes, topic_rating, updated_at
+        RETURNING id, title, body, read_time_minutes, ${numericMutation.returning}, updated_at
       `,
       [
         req.params.postId,
         parsed.data.title,
         parsed.data.body,
         parsed.data.read_time_minutes,
-        parsed.data.topic_rating,
+        parsed.data.reference_count,
       ]
     );
 
@@ -222,7 +224,7 @@ router.patch("/posts/:postId", requireAdmin, async (req, res) => {
       target_id: req.params.postId,
       details: {
         read_time_minutes: parsed.data.read_time_minutes,
-        topic_rating: parsed.data.topic_rating,
+        reference_count: parsed.data.reference_count,
       },
       request: buildRequestContext(req),
     });

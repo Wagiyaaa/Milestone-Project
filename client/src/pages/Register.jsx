@@ -9,6 +9,7 @@ export default function Register({ onSuccess }) {
     email: "",
     phone_e164: "",
     password: "",
+    confirm_password: "",
   });
   const [photo, setPhoto] = useState(null);
   const [errors, setErrors] = useState({});
@@ -29,6 +30,7 @@ export default function Register({ onSuccess }) {
     formData.append("email", form.email);
     formData.append("phone_e164", form.phone_e164);
     formData.append("password", form.password);
+    formData.append("confirm_password", form.confirm_password);
     if (photo) formData.append("profile_photo", photo);
 
     const response = await fetchForm("/auth/register", formData);
@@ -81,6 +83,16 @@ export default function Register({ onSuccess }) {
             onChange={(event) => setField("password", event.target.value)}
           />
           {errors.password && <div className="error">{errors.password}</div>}
+        </label>
+
+        <label>
+          Confirm password
+          <input
+            type="password"
+            value={form.confirm_password}
+            onChange={(event) => setField("confirm_password", event.target.value)}
+          />
+          {errors.confirm_password && <div className="error">{errors.confirm_password}</div>}
         </label>
 
         <label>
