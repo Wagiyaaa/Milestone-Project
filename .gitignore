@@ -23,6 +23,8 @@ server/dist/
 
 # uploads (never commit user uploads)
 uploads/
+logs/
+server/logs/
 
 # OS/editor
 .DS_Store

@@ -17,6 +17,7 @@ app.use(cors({
 const pool = require("./db");
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
+const postRoutes = require("./routes/posts");
 const sessionTimeout = require("./middleware/sessionTimeout");
 
 const PgSession = require("connect-pg-simple")(session);
@@ -79,6 +80,7 @@ app.use("/uploads", express.static(uploadsBase, { fallthrough: false }));
 app.get("/health", (req, res) => res.json({ ok: true }));
 
 app.use("/auth", authRoutes);
+app.use("/posts", postRoutes);
 app.use("/admin", adminRoutes);
 
 // serve React build in production
@@ -95,17 +97,20 @@ app.use((err, req, res, next) => {
  
   // Multer file-size / upload errors
   if (err instanceof multer.MulterError) {
+    const uploadField = req.originalUrl?.startsWith("/auth/register") ? "profile_photo" : "image";
+    const uploadLabel = uploadField === "profile_photo" ? "Profile photo" : "Image";
+
     if (err.code === "LIMIT_FILE_SIZE") {
       const maxMb = Number(process.env.UPLOAD_MAX_MB || 5);
       return res.status(413).json({
-        message: "Profile photo is too large.",
-        errors: { profile_photo: `Max size is ${maxMb}MB.` },
+        message: `${uploadLabel} is too large.`,
+        errors: { [uploadField]: `Max size is ${maxMb}MB.` },
         request_id: req.id,
       });
     }
     return res.status(400).json({
       message: "Please fix the highlighted fields.",
-      errors: { profile_photo: "Upload failed." },
+      errors: { [uploadField]: "Upload failed." },
       request_id: req.id,
     });
   }

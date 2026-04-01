@@ -1,97 +1,114 @@
 import { useState } from "react";
-import { fetchForm } from "../api";
 import { useNavigate } from "react-router-dom";
 
+import { fetchForm } from "../api";
+
 export default function Register({ onSuccess }) {
-    const [form, setForm] = useState({
-        full_name: "",
-        email: "",
-        phone_e164: "",
-        password: "",
-    });
-    const [photo, setPhoto] = useState(null);
-    const [errors, setErrors] = useState({});
-    const [serverMsg, setServerMsg] = useState("");
-    const navigate = useNavigate();
+  const [form, setForm] = useState({
+    full_name: "",
+    email: "",
+    phone_e164: "",
+    password: "",
+    confirm_password: "",
+  });
+  const [photo, setPhoto] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [serverMsg, setServerMsg] = useState("");
+  const navigate = useNavigate();
 
-    function setField(k, v) {
-        setForm((p) => ({ ...p, [k]: v }));
+  function setField(key, value) {
+    setForm((previous) => ({ ...previous, [key]: value }));
+  }
+
+  async function submit(event) {
+    event.preventDefault();
+    setErrors({});
+    setServerMsg("");
+
+    const formData = new FormData();
+    formData.append("full_name", form.full_name);
+    formData.append("email", form.email);
+    formData.append("phone_e164", form.phone_e164);
+    formData.append("password", form.password);
+    formData.append("confirm_password", form.confirm_password);
+    if (photo) formData.append("profile_photo", photo);
+
+    const response = await fetchForm("/auth/register", formData);
+
+    if (!response.ok) {
+      setServerMsg(response.data.message || "Registration failed.");
+      setErrors(response.data.errors || {});
+      return;
     }
 
-    async function submit(e) {
-        e.preventDefault();
-        setErrors({});
-        setServerMsg("");
+    await onSuccess?.();
+    navigate("/");
+  }
 
-        const fd = new FormData();
-        fd.append("full_name", form.full_name);
-        fd.append("email", form.email);
-        fd.append("phone_e164", form.phone_e164);
-        fd.append("password", form.password);
-        if (photo) fd.append("profile_photo", photo);
+  return (
+    <div className="card auth-card">
+      <div className="section-title">
+        <h2>Create an account</h2>
+        <p>Profile photos are required and validated server-side before they are stored.</p>
+      </div>
 
-        const r = await fetchForm("/auth/register", fd);
+      <form onSubmit={submit} className="form-grid top-gap">
+        <label>
+          Full name
+          <input value={form.full_name} onChange={(event) => setField("full_name", event.target.value)} />
+          {errors.full_name && <div className="error">{errors.full_name}</div>}
+        </label>
 
-        if (!r.ok) {
-            setServerMsg(r.data.message || "Registration failed.");
-            setErrors(r.data.errors || {});
-            return;
-        }
+        <label>
+          Email
+          <input value={form.email} onChange={(event) => setField("email", event.target.value)} />
+          {errors.email && <div className="error">{errors.email}</div>}
+        </label>
 
-        await onSuccess?.();
-        navigate("/");
-    }
+        <label>
+          Phone (E.164)
+          <input
+            placeholder="+639171234567"
+            value={form.phone_e164}
+            onChange={(event) => setField("phone_e164", event.target.value)}
+          />
+          {errors.phone_e164 && <div className="error">{errors.phone_e164}</div>}
+        </label>
 
-    return (
-        <div>
-            <h2>Register</h2>
-            <form onSubmit={submit} style={{ display: "grid", gap: 10 }}>
-                <label>
-                    Full name
-                    <input value={form.full_name} onChange={(e) => setField("full_name", e.target.value)} />
-                    {errors.full_name && <div style={{ color: "crimson" }}>{errors.full_name}</div>}
-                </label>
+        <label>
+          Password
+          <input
+            type="password"
+            value={form.password}
+            onChange={(event) => setField("password", event.target.value)}
+          />
+          {errors.password && <div className="error">{errors.password}</div>}
+        </label>
 
-                <label>
-                    Email
-                    <input value={form.email} onChange={(e) => setField("email", e.target.value)} />
-                    {errors.email && <div style={{ color: "crimson" }}>{errors.email}</div>}
-                </label>
+        <label>
+          Confirm password
+          <input
+            type="password"
+            value={form.confirm_password}
+            onChange={(event) => setField("confirm_password", event.target.value)}
+          />
+          {errors.confirm_password && <div className="error">{errors.confirm_password}</div>}
+        </label>
 
-                <label>
-                    Phone (E.164)
-                    <input
-                        placeholder="+639171234567"
-                        value={form.phone_e164}
-                        onChange={(e) => setField("phone_e164", e.target.value)}
-                    />
-                    {errors.phone_e164 && <div style={{ color: "crimson" }}>{errors.phone_e164}</div>}
-                </label>
+        <label>
+          Profile photo (JPEG/PNG required)
+          <input
+            type="file"
+            accept="image/jpeg,image/png"
+            onChange={(event) => setPhoto(event.target.files?.[0] || null)}
+          />
+          {errors.profile_photo && <div className="error">{errors.profile_photo}</div>}
+        </label>
 
-                <label>
-                    Password
-                    <input
-                        type="password"
-                        value={form.password}
-                        onChange={(e) => setField("password", e.target.value)}
-                    />
-                    {errors.password && <div style={{ color: "crimson" }}>{errors.password}</div>}
-                </label>
+        {serverMsg && <div className="error">{serverMsg}</div>}
 
-                <label>
-                    Profile photo (JPEG/PNG required)
-                    <input
-                        type="file"
-                        accept="image/jpeg,image/png"
-                        onChange={(e) => setPhoto(e.target.files?.[0] || null)}
-                    />
-                    {errors.profile_photo && <div style={{ color: "crimson" }}>{errors.profile_photo}</div>}
-                </label>
-
-                {serverMsg && <div style={{ color: "crimson" }}>{serverMsg}</div>}
-
-                <button type="submit">Create account</button>
-            </form>
-        </div>
-    );
+        <button type="submit">Create account</button>
+      </form>
+    </div>
+  );
 }

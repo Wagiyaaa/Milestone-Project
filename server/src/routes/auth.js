@@ -3,6 +3,7 @@ const bcrypt = require("bcrypt");
 const { z } = require("zod");
 const { saveProfilePhoto, deleteProfilePhotoByPath } = require("../utils/profilePhoto");
 const { errorResponse } = require("../utils/errorResponse");
+const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
 
 const express = require("express");
 const pool = require("../db");
@@ -33,6 +34,15 @@ const registerSchema = z.object({
     .trim()
     .regex(/^\+[1-9]\d{1,14}$/, "Use E.164 format (e.g., +639171234567)."),
   password: z.string().min(12, "Password must be at least 12 characters."),
+  confirm_password: z.string().min(1, "Please confirm your password."),
+}).superRefine((data, ctx) => {
+  if (data.password !== data.confirm_password) {
+    ctx.addIssue({
+      code: "custom",
+      path: ["confirm_password"],
+      message: "Passwords do not match.",
+    });
+  }
 });
 
 const loginSchema = z.object({
@@ -81,6 +91,23 @@ async function logAuthAttempt({ email, userId, ip, userAgent, success, failureCo
      VALUES ($1, $2, $3::inet, $4, $5, $6, $7)`,
     [email, userId || null, ip, userAgent || null, success, failureCode || null, requestId || null]
   );
+
+  await writeAuditLog({
+    category: "auth",
+    action: success ? "login.success" : "login.failure",
+    actor_user_id: userId || null,
+    target_type: "user",
+    target_id: userId || null,
+    details: {
+      email,
+      failure_code: failureCode || null,
+    },
+    request: {
+      request_id: requestId || null,
+      ip_address: ip || null,
+      user_agent: userAgent || null,
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -115,6 +142,9 @@ router.get("/me", async (req, res) => {
 // POST /auth/logout
 // ---------------------------------------------------------------------------
 router.post("/logout", (req, res) => {
+  const actorUserId = req.session?.user?.userId || null;
+  const actorRole = req.session?.user?.role || null;
+
   if (!req.session) return res.json({ ok: true });
 
   req.session.destroy((err) => {
@@ -127,6 +157,14 @@ router.post("/logout", (req, res) => {
       httpOnly: true,
       sameSite: "lax",
       secure: process.env.NODE_ENV === "production",
+    });
+
+    void writeAuditLog({
+      category: "auth",
+      action: "logout",
+      actor_user_id: actorUserId,
+      actor_role: actorRole,
+      request: buildRequestContext(req),
     });
 
     return res.json({ ok: true });
@@ -197,6 +235,16 @@ router.post("/register", upload.single("profile_photo"), async (req, res) => {
     // Stamp session timestamps for timeout tracking
     req.session.createdAt = Date.now();
     req.session.lastActivity = Date.now();
+
+    await writeAuditLog({
+      category: "auth",
+      action: "register",
+      actor_user_id: user.id,
+      actor_role: user.role,
+      target_type: "user",
+      target_id: user.id,
+      request: buildRequestContext(req),
+    });
 
     return res.status(201).json({ user });
   } catch (err) {
