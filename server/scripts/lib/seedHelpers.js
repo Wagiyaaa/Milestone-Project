@@ -1,15 +1,7 @@
-const fs = require("fs/promises");
-const path = require("path");
 const bcrypt = require("bcrypt");
 
 const { defaultProfilePhotoDataUrl } = require("../../src/utils/defaultProfilePhoto");
-
-const schemaPath = path.resolve(__dirname, "..", "..", "..", "schemas", "init.sql");
-
-async function applySchema(client) {
-  const sql = await fs.readFile(schemaPath, "utf8");
-  await client.query(sql);
-}
+const { applySchema } = require("../../src/startup/schema");
 
 async function ensureUser(client, { full_name, email, phone_e164, password, role = "user", is_active = true }) {
   const passwordHash = await bcrypt.hash(password, 12);

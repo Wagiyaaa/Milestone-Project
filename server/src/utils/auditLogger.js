@@ -1,8 +1,8 @@
 const fs = require("fs/promises");
 const path = require("path");
+const { logDestination, logFilePath } = require("../config/runtime");
 
-const LOG_DIR = path.resolve(__dirname, "..", "..", "logs");
-const LOG_FILE = path.join(LOG_DIR, "app.log");
+const LOG_DIR = path.dirname(logFilePath);
 const MAX_STRING_LENGTH = 500;
 const MAX_ARRAY_ITEMS = 20;
 const MAX_OBJECT_KEYS = 25;
@@ -51,17 +51,24 @@ function buildRequestContext(req) {
 
 async function writeAuditLog(entry) {
   try {
-    await fs.mkdir(LOG_DIR, { recursive: true });
-
     const payload = sanitizeValue({
       timestamp: new Date().toISOString(),
       ...entry,
     });
 
-    await fs.appendFile(LOG_FILE, `${JSON.stringify(payload)}\n`, {
-      encoding: "utf8",
-      mode: 0o600,
-    });
+    const line = `${JSON.stringify(payload)}\n`;
+
+    if (logDestination === "stdout" || logDestination === "both") {
+      process.stdout.write(line);
+    }
+
+    if (logDestination === "file" || logDestination === "both") {
+      await fs.mkdir(LOG_DIR, { recursive: true });
+      await fs.appendFile(logFilePath, line, {
+        encoding: "utf8",
+        mode: 0o600,
+      });
+    }
   } catch (err) {
     console.error("audit log write failed", err?.message || err);
   }

@@ -1,19 +1,23 @@
-function errorResponse(res, req, status, message, err) {
-  const isDebug = process.env.NODE_ENV !== "production";
- 
+const { debugErrors } = require("../config/runtime");
+
+function buildErrorBody(req, message, err) {
   const body = {
     message,
-    request_id: req.id,
+    request_id: req?.id,
   };
- 
-  if (isDebug && err) {
+
+  if (debugErrors && err) {
     body.debug = {
       error: err.message,
       stack: err.stack,
     };
   }
- 
-  return res.status(status).json(body);
+
+  return body;
 }
 
-module.exports = { errorResponse };
+function errorResponse(res, req, status, message, err) {
+  return res.status(status).json(buildErrorBody(req, message, err));
+}
+
+module.exports = { buildErrorBody, errorResponse };

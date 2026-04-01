@@ -4,6 +4,7 @@ const { z } = require("zod");
 const { saveProfilePhoto, deleteProfilePhotoByPath } = require("../utils/profilePhoto");
 const { errorResponse } = require("../utils/errorResponse");
 const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
+const { clearSessionCookieOptions, uploadMaxMb } = require("../config/runtime");
 
 const express = require("express");
 const pool = require("../db");
@@ -14,11 +15,9 @@ function unauthorized(res, req) {
   return res.status(401).json({ message: "Not authenticated.", request_id: req.id });
 }
 
-const maxMb = Number(process.env.UPLOAD_MAX_MB || 5);
-
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: maxMb * 1024 * 1024 },
+  limits: { fileSize: uploadMaxMb * 1024 * 1024 },
 });
 
 const registerSchema = z.object({
@@ -154,9 +153,7 @@ router.post("/logout", (req, res) => {
     }
 
     res.clearCookie("sid", {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: process.env.NODE_ENV === "production",
+      ...clearSessionCookieOptions,
     });
 
     void writeAuditLog({

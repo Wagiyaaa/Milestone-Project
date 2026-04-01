@@ -1,6 +1,7 @@
 const fs = require("fs/promises");
 const path = require("path");
 const crypto = require("crypto");
+const { uploadsBaseDir } = require("../config/runtime");
 
 const ALLOWED_MIME = new Set(["image/jpeg", "image/png"]);
 
@@ -10,7 +11,7 @@ async function detectFileType(buffer) {
 }
 
 function getUploadsBaseDir() {
-  return process.env.UPLOAD_DIR || path.resolve(__dirname, "..", "..", "uploads");
+  return uploadsBaseDir;
 }
 
 function getTargetDir(folderName) {

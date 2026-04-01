@@ -1,11 +1,8 @@
 const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
+const { clearSessionCookieOptions, sessionAbsoluteHours, sessionIdleMinutes } = require("../config/runtime");
 
-const IDLE_MS = (Number(process.env.SESSION_IDLE_MINS) || 15) * 60 * 1000;
-
-const ABSOLUTE_MS = (Number(process.env.SESSION_ABSOLUTE_HOURS) || Number(process.env.SESSION_ABS_HRS) || 8)
-  * 60
-  * 60
-  * 1000;
+const IDLE_MS = sessionIdleMinutes * 60 * 1000;
+const ABSOLUTE_MS = sessionAbsoluteHours * 60 * 60 * 1000;
 
 const SKIP_ACTIVITY_ROUTES = ["/auth/me"];
 
@@ -60,9 +57,7 @@ function destroyAndRespond(req, res, message) {
   }
 
   res.clearCookie("sid", {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    ...clearSessionCookieOptions,
   });
 
   return res.status(401).json({

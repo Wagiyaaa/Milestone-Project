@@ -9,13 +9,13 @@ const { saveImage, deleteImageByPath } = require("../utils/imageStorage");
 const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
 const { listPosts, getPostVisibility } = require("../services/postService");
 const { getPostNumericMutationParts } = require("../utils/postSchemaCompat");
+const { uploadMaxMb } = require("../config/runtime");
 
 const router = express.Router();
 
-const maxMb = Number(process.env.UPLOAD_MAX_MB || 5);
 const upload = multer({
   storage: multer.memoryStorage(),
-  limits: { fileSize: maxMb * 1024 * 1024 },
+  limits: { fileSize: uploadMaxMb * 1024 * 1024 },
 });
 
 const createPostSchema = z.object({

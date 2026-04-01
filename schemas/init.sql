@@ -70,6 +70,53 @@ CREATE TABLE IF NOT EXISTS public.posts (
   updated_at timestamptz NOT NULL DEFAULT now()
 );
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'posts'
+      AND column_name = 'topic_rating'
+  ) AND NOT EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'posts'
+      AND column_name = 'reference_count'
+  ) THEN
+    ALTER TABLE public.posts RENAME COLUMN topic_rating TO reference_count;
+  ELSIF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'posts'
+      AND column_name = 'topic_rating'
+  ) AND EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'posts'
+      AND column_name = 'reference_count'
+  ) THEN
+    UPDATE public.posts
+    SET reference_count = COALESCE(reference_count, topic_rating)
+    WHERE reference_count IS NULL;
+
+    ALTER TABLE public.posts DROP COLUMN topic_rating;
+  END IF;
+END $$;
+
+ALTER TABLE public.posts
+  ADD COLUMN IF NOT EXISTS reference_count integer;
+
+UPDATE public.posts
+SET reference_count = 0
+WHERE reference_count IS NULL;
+
+ALTER TABLE public.posts
+  ALTER COLUMN reference_count SET NOT NULL;
+
 CREATE INDEX IF NOT EXISTS posts_author_created_idx
   ON public.posts (author_id, created_at DESC);
 

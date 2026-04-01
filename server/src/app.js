@@ -8,24 +8,31 @@ const crypto = require("crypto");
 const app = express();
 
 const cors = require("cors");
-
-app.use(cors({
-  origin: "http://localhost:5173",
-  credentials: true,
-}));
-
 const pool = require("./db");
 const authRoutes = require("./routes/auth");
 const adminRoutes = require("./routes/admin");
 const postRoutes = require("./routes/posts");
 const sessionTimeout = require("./middleware/sessionTimeout");
+const {
+  corsAllowedOrigins,
+  getCorsOptions,
+  isProduction,
+  sessionCookieOptions,
+  uploadMaxMb,
+  uploadsBaseDir,
+} = require("./config/runtime");
+const { buildErrorBody } = require("./utils/errorResponse");
 
 const PgSession = require("connect-pg-simple")(session);
 
-const IS_PRODUCTION = process.env.NODE_ENV === "production";
-
-if (IS_PRODUCTION) {
+if (isProduction) {
   app.set("trust proxy", 1);
+}
+
+app.disable("x-powered-by");
+
+if (corsAllowedOrigins.length > 0) {
+  app.use(cors(getCorsOptions()));
 }
 
 app.use(helmet({
@@ -61,12 +68,7 @@ app.use(
       pool,
       tableName: "user_sessions",
     }),
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: IS_PRODUCTION,
-      maxAge: (Number(process.env.SESSION_ABSOLUTE_HOURS) || 8) * 60 * 60 * 1000,
-    },
+    cookie: sessionCookieOptions,
   })
 );
 
@@ -74,8 +76,7 @@ app.use(
 app.use(sessionTimeout);
 
 // uploads (default: server/uploads, or persistent disk via UPLOAD_DIR)
-const uploadsBase = process.env.UPLOAD_DIR || path.resolve(__dirname, "..", "uploads");
-app.use("/uploads", express.static(uploadsBase, { fallthrough: false }));
+app.use("/uploads", express.static(uploadsBaseDir, { fallthrough: false }));
 
 app.get("/health", (req, res) => res.json({ ok: true }));
 
@@ -84,7 +85,7 @@ app.use("/posts", postRoutes);
 app.use("/admin", adminRoutes);
 
 // serve React build in production
-if (IS_PRODUCTION) {
+if (isProduction) {
   const rootDir = path.resolve(__dirname, "..", ".."); // repo root
   const distPath = path.join(rootDir, "client", "dist");
 
@@ -93,18 +94,15 @@ if (IS_PRODUCTION) {
 }
 
 app.use((err, req, res, next) => {
-  const isDebug = !IS_PRODUCTION;
- 
   // Multer file-size / upload errors
   if (err instanceof multer.MulterError) {
     const uploadField = req.originalUrl?.startsWith("/auth/register") ? "profile_photo" : "image";
     const uploadLabel = uploadField === "profile_photo" ? "Profile photo" : "Image";
 
     if (err.code === "LIMIT_FILE_SIZE") {
-      const maxMb = Number(process.env.UPLOAD_MAX_MB || 5);
       return res.status(413).json({
         message: `${uploadLabel} is too large.`,
-        errors: { [uploadField]: `Max size is ${maxMb}MB.` },
+        errors: { [uploadField]: `Max size is ${uploadMaxMb}MB.` },
         request_id: req.id,
       });
     }
@@ -117,14 +115,7 @@ app.use((err, req, res, next) => {
  
   // All other unhandled errors
   console.error(`[${req.id}] unhandled error`, err?.message || err);
-  if (isDebug) console.error(err?.stack);
- 
-  const body = { message: "Something went wrong.", request_id: req.id };
-  if (isDebug) {
-    body.debug = { error: err?.message, stack: err?.stack };
-  }
- 
-  return res.status(500).json(body);
+  return res.status(500).json(buildErrorBody(req, "Something went wrong.", err));
 });
  
 module.exports = app;
