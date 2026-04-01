@@ -23,6 +23,7 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
   const [commentError, setCommentError] = useState("");
   const [statusMessage, setStatusMessage] = useState("");
   const [workingAction, setWorkingAction] = useState("");
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [editing, setEditing] = useState(false);
   const [moderationReason, setModerationReason] = useState(post.hidden_reason || "");
   const [editForm, setEditForm] = useState({
@@ -42,6 +43,26 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
     setModerationReason(post.hidden_reason || "");
     setEditing(false);
   }, [post]);
+
+  useEffect(() => {
+    if (!imageViewerOpen) return undefined;
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        setImageViewerOpen(false);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [imageViewerOpen]);
 
   async function toggleLike() {
     if (!me) return;
@@ -232,7 +253,51 @@ export default function PostCard({ post, me, onReload, adminMode = false }) {
       )}
 
       {post.image_path && (
-        <img className="post-image" src={post.image_path} alt={`Post by ${post.author_name}`} />
+        <>
+          <button
+            type="button"
+            className="post-image-button"
+            onClick={() => setImageViewerOpen(true)}
+            aria-label={`Expand image for ${post.title}`}
+          >
+            <img
+              className="post-image"
+              src={post.image_path}
+              alt={`Post by ${post.author_name}`}
+              loading="lazy"
+              decoding="async"
+              referrerPolicy="no-referrer"
+            />
+            <span className="post-image-hint">Click to view full image</span>
+          </button>
+
+          {imageViewerOpen && (
+            <div
+              className="image-viewer-backdrop"
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Expanded image for ${post.title}`}
+              onClick={() => setImageViewerOpen(false)}
+            >
+              <div className="image-viewer-panel" onClick={(event) => event.stopPropagation()}>
+                <button
+                  type="button"
+                  className="secondary image-viewer-close"
+                  onClick={() => setImageViewerOpen(false)}
+                >
+                  Close
+                </button>
+                <img
+                  className="image-viewer-full"
+                  src={post.image_path}
+                  alt={`Post by ${post.author_name}`}
+                  decoding="async"
+                  referrerPolicy="no-referrer"
+                />
+              </div>
+            </div>
+          )}
+        </>
       )}
 
       {post.is_hidden && post.hidden_reason && (

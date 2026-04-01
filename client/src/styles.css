@@ -299,11 +299,71 @@ pre {
 
 .post-image {
     width: 100%;
-    margin-top: 14px;
     border-radius: 16px;
     border: 1px solid var(--border);
     object-fit: cover;
     max-height: 420px;
+}
+
+.post-image-button {
+    width: 100%;
+    margin-top: 14px;
+    padding: 0;
+    border: 0;
+    background: none;
+    display: grid;
+    gap: 10px;
+    cursor: zoom-in;
+    text-align: left;
+}
+
+.post-image-button:hover {
+    background: none;
+}
+
+.post-image-button:focus-visible {
+    outline: 2px solid rgba(124, 58, 237, 0.8);
+    outline-offset: 6px;
+    border-radius: 18px;
+}
+
+.post-image-hint {
+    color: var(--muted);
+    font-size: 13px;
+}
+
+.image-viewer-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 1000;
+    padding: 24px;
+    display: grid;
+    place-items: center;
+    background: rgba(4, 8, 17, 0.88);
+    backdrop-filter: blur(10px);
+}
+
+.image-viewer-panel {
+    width: min(1100px, 100%);
+    max-height: 100%;
+    display: grid;
+    gap: 12px;
+    justify-items: end;
+}
+
+.image-viewer-close {
+    min-width: 96px;
+}
+
+.image-viewer-full {
+    width: auto;
+    max-width: 100%;
+    max-height: calc(100vh - 120px);
+    border-radius: 18px;
+    border: 1px solid var(--border);
+    background: rgba(255, 255, 255, 0.04);
+    object-fit: contain;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
 }
 
 .actions-row {
@@ -407,5 +467,13 @@ pre {
 
     .container {
         margin: 20px auto 40px;
+    }
+
+    .image-viewer-backdrop {
+        padding: 16px;
+    }
+
+    .image-viewer-full {
+        max-height: calc(100vh - 96px);
     }
 }
