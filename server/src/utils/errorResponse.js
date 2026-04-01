@@ -15,5 +15,5 @@ function errorResponse(res, req, status, message, err) {
  
   return res.status(status).json(body);
 }
- 
-module.exports =  errorResponse;
+
+module.exports = { errorResponse };

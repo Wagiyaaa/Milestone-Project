@@ -1,6 +1,11 @@
+const { writeAuditLog, buildRequestContext } = require("../utils/auditLogger");
+
 const IDLE_MS = (Number(process.env.SESSION_IDLE_MINS) || 15) * 60 * 1000;
 
-const ABSOLUTE_MS =  (Number(process.env.SESSION_ABS_HRS) || 8) * 60 * 60 * 1000;
+const ABSOLUTE_MS = (Number(process.env.SESSION_ABSOLUTE_HOURS) || Number(process.env.SESSION_ABS_HRS) || 8)
+  * 60
+  * 60
+  * 1000;
 
 const SKIP_ACTIVITY_ROUTES = ["/auth/me"];
 
@@ -18,7 +23,7 @@ function sessionTimeout(req, res, next) {
     if (!createdAt) {
         session.createdAt = now;
     } else if (now - createdAt > ABSOLUTE_MS) {
-        return destroyAndRespond (req, res, "Session has expired. Please return to log in.");
+        return destroyAndRespond(req, res, "Session has expired. Please return to log in.");
     }
 
     // idle timeout
@@ -37,6 +42,15 @@ function sessionTimeout(req, res, next) {
 }
 
 function destroyAndRespond(req, res, message) {
+  void writeAuditLog({
+    category: "auth",
+    action: "session.expired",
+    actor_user_id: req.session?.user?.userId || null,
+    actor_role: req.session?.user?.role || null,
+    request: buildRequestContext(req),
+    details: { message },
+  });
+
   if (req.session) {
     req.session.destroy((err) => {
       if (err) {

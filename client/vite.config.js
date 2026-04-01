@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       "/auth": { target: "http://localhost:5000", changeOrigin: true },
       "/admin": { target: "http://localhost:5000", changeOrigin: true },
+      "/posts": { target: "http://localhost:5000", changeOrigin: true },
       "/uploads": { target: "http://localhost:5000", changeOrigin: true },
     },
   },

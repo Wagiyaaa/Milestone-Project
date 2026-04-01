@@ -53,3 +53,50 @@ CREATE INDEX IF NOT EXISTS auth_attempts_failed_time_idx
 
 CREATE INDEX IF NOT EXISTS auth_attempts_ip_time_idx
   ON public.auth_attempts (ip_address, attempted_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  author_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  title text NOT NULL,
+  body text NOT NULL,
+  image_path text,
+  read_time_minutes integer NOT NULL CHECK (read_time_minutes BETWEEN 1 AND 120),
+  topic_rating integer NOT NULL CHECK (topic_rating BETWEEN 1 AND 10),
+  is_hidden boolean NOT NULL DEFAULT false,
+  hidden_reason text,
+  hidden_at timestamptz,
+  hidden_by uuid REFERENCES public.users(id) ON DELETE SET NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS posts_author_created_idx
+  ON public.posts (author_id, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS posts_visibility_created_idx
+  ON public.posts (is_hidden, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.comments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  post_id uuid NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+  author_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  body text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS comments_post_created_idx
+  ON public.comments (post_id, created_at ASC);
+
+CREATE INDEX IF NOT EXISTS comments_author_created_idx
+  ON public.comments (author_id, created_at DESC);
+
+CREATE TABLE IF NOT EXISTS public.post_likes (
+  post_id uuid NOT NULL REFERENCES public.posts(id) ON DELETE CASCADE,
+  user_id uuid NOT NULL REFERENCES public.users(id) ON DELETE CASCADE,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (post_id, user_id)
+);
+
+CREATE INDEX IF NOT EXISTS post_likes_user_created_idx
+  ON public.post_likes (user_id, created_at DESC);

@@ -1,83 +1,25 @@
 import { useEffect, useState } from "react";
-import { Routes, Route, NavLink, useNavigate, Navigate } from "react-router-dom";
-import { fetchJson } from "./api";
+import { Navigate, NavLink, Route, Routes, useNavigate } from "react-router-dom";
 
+import { fetchJson } from "./api";
+import Home from "./pages/Home";
 import Register from "./pages/Register";
 import Login from "./pages/Login";
 import AdminUsers from "./pages/AdminUsers";
+import AdminPosts from "./pages/AdminPosts";
+import AdminUserDetail from "./pages/AdminUserDetail";
 
 function GuestOnly({ me, loading, children }) {
   if (loading) {
     return (
       <div className="card">
-        <p>Checking session…</p>
+        <p>Checking session...</p>
       </div>
     );
   }
+
   if (me) return <Navigate to="/" replace />;
   return children;
-}
-
-function ProfileCard({ me }) {
-  const [showRaw, setShowRaw] = useState(false);
-
-  return (
-    <div className="card">
-      <div style={{ display: "flex", gap: 14, alignItems: "center" }}>
-        {me?.profile_photo_path ? (
-          <img
-            src={me.profile_photo_path}
-            alt="profile"
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 16,
-              objectFit: "cover",
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(0,0,0,0.2)",
-            }}
-          />
-        ) : (
-          <div
-            style={{
-              width: 72,
-              height: 72,
-              borderRadius: 16,
-              border: "1px solid rgba(255,255,255,0.10)",
-              background: "rgba(0,0,0,0.2)",
-              display: "grid",
-              placeItems: "center",
-              color: "rgba(255,255,255,0.6)",
-              fontSize: 12,
-            }}
-          >
-            no photo
-          </div>
-        )}
-
-        <div style={{ flex: 1 }}>
-          <h2 style={{ margin: 0 }}>{me.full_name}</h2>
-          <div className="small">{me.email}</div>
-          <div className="small">{me.phone_e164}</div>
-        </div>
-
-        <div style={{ textAlign: "right" }}>
-          <div className="badge">role</div>
-          <div style={{ marginTop: 4, fontWeight: 700 }}>{me.role}</div>
-        </div>
-      </div>
-
-      <div style={{ marginTop: 14, display: "flex", alignItems: "center", gap: 10 }}>
-        <div className="small">session-backed identity (server cookie)</div>
-        <div className="spacer" />
-        <button type="button" className="secondary" onClick={() => setShowRaw((v) => !v)}>
-          {showRaw ? "Hide raw JSON" : "Show raw JSON"}
-        </button>
-      </div>
-
-      {showRaw && <pre style={{ marginTop: 10 }}>{JSON.stringify(me, null, 2)}</pre>}
-    </div>
-  );
 }
 
 export default function App() {
@@ -87,9 +29,8 @@ export default function App() {
 
   async function loadMe() {
     setLoadingMe(true);
-    const r = await fetchJson("/auth/me", { method: "GET", headers: {} });
-    if (r.ok) setMe(r.data.user);
-    else setMe(null);
+    const response = await fetchJson("/auth/me", { method: "GET", headers: {} });
+    setMe(response.ok ? response.data.user : null);
     setLoadingMe(false);
   }
 
@@ -104,30 +45,29 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-  let expired = false;
+    if (!me) return undefined;
 
-  const interval = setInterval(async () => {
+    let expired = false;
+    const interval = setInterval(async () => {
       if (expired) return;
-      const { status, data } = await fetchJson("/auth/me");
+
+      const { status, data } = await fetchJson("/auth/me", { method: "GET", headers: {} });
       if (status === 401 && data.code === "SESSION_EXPIRED") {
         expired = true;
         clearInterval(interval);
-        alert("Your session has expired. Please log in again.");
-        window.location.href = "/login";
       }
     }, 30 * 1000);
 
     return () => clearInterval(interval);
-  }, []);
+  }, [me?.id]);
 
   return (
     <div className="container">
       <header className="nav">
         <NavLink to="/" className={({ isActive }) => (isActive ? "active" : "")}>
-          Home
+          Feed
         </NavLink>
 
-        {/* Show Register/Login ONLY when not authenticated */}
         {!loadingMe && !me && (
           <>
             <NavLink to="/register" className={({ isActive }) => (isActive ? "active" : "")}>
@@ -139,57 +79,37 @@ export default function App() {
           </>
         )}
 
-        {/* Admin link ONLY if role is admin */}
         {me?.role === "admin" && (
-          <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>
-            Admin
-          </NavLink>
+          <>
+            <NavLink to="/admin/users" className={({ isActive }) => (isActive ? "active" : "")}>
+              Admin Users
+            </NavLink>
+            <NavLink to="/admin/posts" className={({ isActive }) => (isActive ? "active" : "")}>
+              Admin Posts
+            </NavLink>
+          </>
         )}
 
         <div className="spacer" />
 
         {loadingMe ? (
-          <span className="badge">checking session…</span>
+          <span className="badge">Checking session...</span>
         ) : me ? (
-          <>
+          <div className="toolbar">
             <span className="badge">
               {me.email} ({me.role})
             </span>
-            <button onClick={logout} className="secondary" style={{ marginLeft: 10 }}>
+            <button onClick={logout} className="secondary">
               Logout
             </button>
-          </>
+          </div>
         ) : (
-          <span className="badge">Not logged in</span>
+          <span className="badge">Browsing as guest</span>
         )}
       </header>
 
       <Routes>
-        <Route
-          path="/"
-          element={
-            <div className="card">
-              <h1>Home</h1>
-              <p>
-                This app uses <b>server sessions (cookies)</b>. Your identity comes from <code>/auth/me</code>, not from
-                localStorage.
-              </p>
-
-              {loadingMe ? (
-                <p>Loading profile…</p>
-              ) : me ? (
-                <ProfileCard me={me} />
-              ) : (
-                <div className="card" style={{ marginTop: 14 }}>
-                  <h2 style={{ marginTop: 0 }}>You’re not logged in</h2>
-                  <p>Go to Login to start a session, or Register to create an account.</p>
-                </div>
-              )}
-            </div>
-          }
-        />
-
-        {/* Guest-only routes */}
+        <Route path="/" element={<Home me={me} loadingMe={loadingMe} />} />
         <Route
           path="/register"
           element={
@@ -206,9 +126,10 @@ export default function App() {
             </GuestOnly>
           }
         />
-
-        {/* Admin route (backend enforces admin, frontend just shows UX) */}
         <Route path="/admin/users" element={<AdminUsers me={me} />} />
+        <Route path="/admin/users/:userId" element={<AdminUserDetail me={me} />} />
+        <Route path="/admin/posts" element={<AdminPosts me={me} />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </div>
   );
