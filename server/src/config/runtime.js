@@ -34,6 +34,13 @@ function normalizeLogDestination(value, fallback) {
 const isProduction = process.env.NODE_ENV === "production";
 const debugErrors = parseBoolean(process.env.DEBUG_ERRORS, !isProduction);
 const port = Number(process.env.PORT) || 5000;
+const httpsEnabled = parseBoolean(process.env.HTTPS_ENABLED, false);
+const httpsPort = Number(process.env.HTTPS_PORT) || port;
+const httpsCertDir = process.env.HTTPS_CERT_DIR || path.resolve(__dirname, "..", "..", "certs");
+const httpsKeyPath = process.env.HTTPS_KEY_PATH || path.join(httpsCertDir, "selfsigned.key");
+const httpsCertPath = process.env.HTTPS_CERT_PATH || path.join(httpsCertDir, "selfsigned.crt");
+const httpsCommonName = process.env.HTTPS_COMMON_NAME || "localhost";
+const httpsCertDaysValid = Number(process.env.HTTPS_CERT_DAYS_VALID) || 30;
 const uploadMaxMb = Number(process.env.UPLOAD_MAX_MB) || 5;
 const sessionIdleMinutes = Number(process.env.SESSION_IDLE_MINS) || 15;
 const sessionAbsoluteHours =
@@ -104,6 +111,10 @@ function getStartupWarnings() {
     );
   }
 
+  if (isProduction && httpsEnabled) {
+    warnings.push("HTTPS_ENABLED is on. Render already terminates HTTPS, so leave this off in hosted production unless you need end-to-end TLS behind a custom proxy.");
+  }
+
   if (isProduction && !process.env.UPLOAD_DIR) {
     warnings.push(
       "Uploads are using local disk storage. On Render this storage is ephemeral unless you mount a persistent disk."
@@ -150,6 +161,12 @@ module.exports = {
   getCorsOptions,
   getStartupFatalErrors,
   getStartupWarnings,
+  httpsCertDaysValid,
+  httpsCertPath,
+  httpsCommonName,
+  httpsEnabled,
+  httpsKeyPath,
+  httpsPort,
   isProduction,
   logDestination,
   logFilePath,

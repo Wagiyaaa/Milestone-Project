@@ -25,6 +25,7 @@ server/dist/
 uploads/
 logs/
 server/logs/
+server/certs/
 
 # OS/editor
 .DS_Store

@@ -1,7 +1,16 @@
 require("dotenv").config();
+const http = require("http");
+const https = require("https");
 const app = require("./app");
-const { debugErrors, getStartupFatalErrors, port } = require("./config/runtime");
+const {
+  debugErrors,
+  getStartupFatalErrors,
+  httpsEnabled,
+  httpsPort,
+  port,
+} = require("./config/runtime");
 const { runStartupTasks } = require("./startup/bootstrap");
+const { ensureHttpsCredentials } = require("./startup/https");
 
 async function start() {
   const fatalErrors = getStartupFatalErrors();
@@ -11,7 +20,20 @@ async function start() {
 
   await runStartupTasks();
 
-  app.listen(port, () => {
+  if (httpsEnabled) {
+    const credentials = await ensureHttpsCredentials();
+    https.createServer(credentials, app).listen(httpsPort, () => {
+      console.log(`API running on https://localhost:${httpsPort}`);
+      console.log(`[https] Certificate: ${credentials.certPath}`);
+      console.log(`[https] Key: ${credentials.keyPath}`);
+      if (credentials.generated) {
+        console.log("[https] Generated a self-signed certificate for local use.");
+      }
+    });
+    return;
+  }
+
+  http.createServer(app).listen(port, () => {
     console.log(`API running on http://localhost:${port}`);
   });
 }
