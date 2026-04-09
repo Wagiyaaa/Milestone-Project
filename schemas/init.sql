@@ -117,6 +117,31 @@ WHERE reference_count IS NULL;
 ALTER TABLE public.posts
   ALTER COLUMN reference_count SET NOT NULL;
 
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.posts'::regclass
+      AND conname = 'posts_topic_rating_check'
+  ) THEN
+    ALTER TABLE public.posts DROP CONSTRAINT posts_topic_rating_check;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1
+    FROM pg_constraint
+    WHERE conrelid = 'public.posts'::regclass
+      AND conname = 'posts_reference_count_check'
+  ) THEN
+    ALTER TABLE public.posts DROP CONSTRAINT posts_reference_count_check;
+  END IF;
+
+  ALTER TABLE public.posts
+    ADD CONSTRAINT posts_reference_count_check
+    CHECK (reference_count BETWEEN 0 AND 50);
+END $$;
+
 CREATE INDEX IF NOT EXISTS posts_author_created_idx
   ON public.posts (author_id, created_at DESC);
 
